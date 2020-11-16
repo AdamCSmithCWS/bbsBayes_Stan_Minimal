@@ -10,7 +10,7 @@ The model works. It generates reasonable estimates, no divergent transitions, ef
 
 The problem is that the sampler exceeds the maximum tree depth, even if the limit is set to \~15-17 (haven't tried higher yet because life is short). The high max_treedepth limit means that the sampler takes a really long time, even for this species which has very few data compared to many in the dataset.
 
-For example, at tree_depth 15, the n_leapfrog steps is \> 30,000. So even a limited initial run of 500 (400 warmup) requires \~10 hours. If max_treedepth at 17, it's closer to 24 hours for the same small run (500 transitions).
+For example, at tree_depth 15, the n_leapfrog steps is \> 30,000. So even a limited initial run of 500 (400 warmup) requires \~10 hours. If max_treedepth at 17, it's closer to 24 hours for the same small run (500 transitions). If I were to try to run the model on some of the most data-rich species in the dataset, it would require months of run-time.
 
 ## Help!
 
