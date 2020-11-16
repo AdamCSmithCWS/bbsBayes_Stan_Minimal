@@ -70,7 +70,7 @@ library(shinystan)
 
 
 
-mod.file = "models/slope2.stan"
+mod.file = "models/slope3.stan"
 
 parms = c("sdnoise",
           "sdyear",
