@@ -223,9 +223,14 @@ slope_model = stan_model(file=mod.file)
 
 load("output/Pacific Wren_slope_stan_saved_output.RData")
 
+get_elapsed_time(slope_stanfit)/3600 ## in hours
+print(slope_stanfit)
 
+conv_diag = get_sampler_params(slope_stanfit, inc_warmup = FALSE)
 
-launch_shinystan(slope_stanfit) 
+sapply(conv_diag,simplify = TRUE, function(x) colMeans(x))
+
+#launch_shinystan(slope_stanfit) 
 
 
 ```
