@@ -1,10 +1,11 @@
 ---
 bibliography: references.bib
+output: word_document
 ---
 
 # bbsBayes_Stan_Minimal
 
-This is an minimum working example of an early attempt to use Stan to fit a relatively simple hierarchical model applied to data from the North American Breeding Bird Survey. I'm trying to build a Stan version of the JAGS models currently used to analyse the North American Breeding Bird Survey (BBS) monitoring data [@sauer2011][@smith2015][@smith2020]. The model is effectively a hierarchical, over-dispersed Poisson regression, with a number of observation-effect parameters to account for observer-effects and route-level variation in abundance.
+This is an minimum working example of an early attempt to use Stan to fit a relatively simple hierarchical model applied to data from the North American Breeding Bird Survey. I'm trying to build a Stan version of the JAGS models currently used to analyse the North American Breeding Bird Survey (BBS) monitoring data [@sauer2011][@smith2020]. The model is effectively a hierarchical, over-dispersed Poisson regression, with a number of intercept parameters to account for observer-effects, route-level variation in abundance, and random annual fluctuations around the slope-line.
 
 This repo includes the code, model, and data for a minimal working example of one of the simplest models, using a species with pretty representative count structure and relatively few data (few strata and routes). It's currently set up to use only the most recent 20-years of data, but the continental scale monitoring program includes \> 50 years of data. The data are observations (summed counts) of individual birds observed during annual surveys of BBS "routes".
 
@@ -16,7 +17,7 @@ The problem is that the sampler exceeds the maximum tree depth, even if the limi
 
 For example, at tree_depth 15, the n_leapfrog steps is \> 30,000. So even a limited initial run of 500 (400 warmup) requires \~10 hours. If max_treedepth at 17, it's closer to 24 hours for the same small run (500 transitions).
 
-## Help
+## Help!
 
 Is there an alternative parameterization that might make this posterior easier to sample?
 
@@ -28,7 +29,7 @@ The priors are pretty reasonable. They're not strongly informative, but they are
 
 The random effects all use an uncentered parameterization. I've fit versions with centered parameterizations, and they are notably worse (much lower n_eff values).
 
-Three of the random effects also include soft sum-to-zero constraints \` sum(strata_p) \~ normal(0,0.001\*nstrata) \`. There are some inherent collinearities in the BBS data, and these constraints should (and seem to) help estimate parameters that have some correlation, such as the various stratum-level parameters that model and account for temporal changes in the observations:
+Three of the random effects also include soft sum-to-zero constraints `{stan, eval = FALSE} sum(strata_p) ~ normal(0,0.001*nstrata)`. There are some inherent collinearities in the BBS data, and these constraints should (and seem to) help estimate parameters that have some correlation, such as the various stratum-level parameters that model and account for temporal changes in the observations:
 
 -   slopes (rates of change in abundance over time),
 
@@ -36,11 +37,12 @@ Three of the random effects also include soft sum-to-zero constraints \` sum(str
 
 -   year-effects (annual, random fluctuations in abundance, in addition to the changes due to the slope)
 
-I've tried versions without these constraints and the constraints help, in particular they improve the estimates of the hyperparameters on slope and intercept. They also don't change the convergence properties in any significant way.
+I've tried versions without these constraints and the constraints help, in particular they improve the sampling of the hyperparameters on slope and intercept.
 
 ## The data
 
-```{r data load, message = FALSE}
+```{r dataload, message = FALSE}
+
 library(rstan)
 rstan_options(auto_write = TRUE)
 library(shinystan)
@@ -75,7 +77,7 @@ The data object is a list with the following components:
 
 ## The model
 
-```{stan output.var=}
+```{stan, eval = FALSE}
 // This is a Stan implementation of the bbsBayes slope model
 
 data {
@@ -184,9 +186,9 @@ model {
 
 ```
 
-Here's an example of the model run that required \~10 hours to complete
+Here's an example of the settings for a model run that required \~10 hours to complete
 
-```{r}
+```{r model_run, eval = FALSE}
 
 mod.file = "models/slope.stan"
 
@@ -204,23 +206,23 @@ parms = c("sdnoise",
 ## compile model
 slope_model = stan_model(file=mod.file)
 
-## run sampler on model, data
-# stime = system.time(slope_stanfit <-
-#                       sampling(slope_model,
-#                                data=stan_data,
-#                                verbose=TRUE, refresh=100,
-#                                chains=3, iter=500,
-#                                warmup=400,
-#                                cores = 3,
-#                                pars = parms,
-#                                control = list(adapt_delta = 0.8,
-#                                               max_treedepth = 15)))
-# 
-# stime[[3]]/3600
+# run sampler on model, data
+slope_stanfit <- sampling(slope_model,
+                               data=stan_data,
+                               verbose=TRUE, refresh=100,
+                               chains=3, iter=500,
+                               warmup=400,
+                               cores = 3,
+                               pars = parms,
+                               control = list(adapt_delta = 0.8,
+                                              max_treedepth = 15))
 
-# save(list = c("stime","slope_stanfit","species","mod.file","model","strat"),
+
+# save(list = c("slope_stanfit","species","mod.file","model","strat"),
 #      file = "output/Pacific Wren_slope_stan_saved_output.RData")
+```
 
+```{r summary,eval = TRUE}
 load("output/Pacific Wren_slope_stan_saved_output.RData")
 
 get_elapsed_time(slope_stanfit)/3600 ## in hours
@@ -234,3 +236,67 @@ sapply(conv_diag,simplify = TRUE, function(x) colMeans(x))
 
 
 ```
+
+## Original data prep for JAGS model
+
+```{r earlier_data_prep, eval = FALSE}
+# This is setup that is not required to run this example ------------------
+#install.packages("bbsBayes")
+#fetch_bbs_data()
+#yes
+
+library(bbsBayes)
+
+
+
+# load and stratify PAWR data ---------------------------------------------
+species = "Pacific Wren"
+strat = "bbs_usgs"
+model = "slope"
+
+#stratify the BBS data based on the standard USGS stratification,
+# intersection of states_provinces and Bird Conservation Regions
+strat_data = stratify(by = strat)
+
+#prepare BBS data for Pacific Wren, retaining only counts since 1999
+jags_data = prepare_jags_data(strat_data = strat_data,
+                             species_to_run = species,
+                             model = model,
+                             min_year = 1999)
+
+# exporting the original JAGS version of the model
+# some version of this has been used since 2011 to produce status and trend estimates by the Canadian and US federal agencies
+model_to_file(model = model, filename = "Original_JAGS_model.R")
+# the priors in this model are different, but generally only in the sense that these
+# JAGS priors are mostly "uninformative" and suggest far flatter prior distributions than is realistic
+# the priors in the Stan model called below are not strongly informative, but they should be more reasonable
+
+
+
+
+#select out portions of the
+stan_data = jags_data[c("ncounts", #number of counts (observations)
+                         "nstrata", #number of groups (geographic strata) for the random-effect slopes
+                         "count", #counts of individuals observed at a site (BBS survey route) in a year
+                         "strat", #group indicators (strata)
+                         "year", #years scaled as 1 through nyears.
+                         "firstyr", #indicator variable for the first year an observer surveyed a particular route - nuisance parameter (start-up effect)
+                         "fixedyear")] #mid-point year in the time-series, used to center the year variables
+stan_data[["nyears"]] <- max(jags_data$year) #number of years in the time-series
+stan_data[["nobservers"]] <- sum(jags_data$nobservers)#number of observer-route combinations in each stratum - random-effect nuisance parameter
+stan_data[["obser"]] <- as.integer(factor(paste(jags_data$strat,jags_data$obser,sep = "_"))) #observer-route indicators
+
+
+save(list = c("stan_data",
+              "species",
+              "strat",
+              "jags_data",
+              "model"),
+    file = "data/prepared_BBS_data_Pacific_Wren.RData")
+
+
+
+
+```
+
+## References
