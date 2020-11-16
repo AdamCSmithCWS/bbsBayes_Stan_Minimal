@@ -221,11 +221,23 @@ slope_stanfit <- sampling(slope_model,
 load("output/Pacific Wren_slope_stan_saved_output.RData")
 
 get_elapsed_time(slope_stanfit)/3600 ## in hours
-print(slope_stanfit)
+          warmup   sample
+chain:1 7.798528 2.105014
+chain:2 8.093528 2.224678
+chain:3 7.706306 2.151717
+
+#print(slope_stanfit)
 
 conv_diag = get_sampler_params(slope_stanfit, inc_warmup = FALSE)
 
-sapply(conv_diag,simplify = TRUE, function(x) colMeans(x))
+signif(sapply(conv_diag,simplify = TRUE, function(x) colMeans(x)),2)
+                  [,1]     [,2]     [,3]
+accept_stat__  8.8e-01  8.7e-01  8.2e-01
+stepsize__     3.8e-03  4.0e-03  4.6e-03
+treedepth__    1.5e+01  1.5e+01  1.5e+01
+n_leapfrog__   3.3e+04  3.3e+04  3.3e+04
+divergent__    0.0e+00  0.0e+00  0.0e+00
+energy__      -6.6e+04 -6.6e+04 -6.6e+04
 
 #launch_shinystan(slope_stanfit) 
 
