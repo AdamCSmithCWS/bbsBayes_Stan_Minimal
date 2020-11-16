@@ -149,7 +149,7 @@ model {
   sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
   noise_raw ~ normal(0,1); //non centered prior normal tailed extra Poisson log-normal variance
   
-  sdobs ~ normal(0,1); //prior on sd of gam hyperparameters
+  sdobs ~ normal(0,1); //prior on sd of observer effects
   sdyear ~ normal(0,1); // prior on sd of yeareffects - stratum specific
   obs_raw ~ normal(0,1); //non centered prior on observer effects
   
