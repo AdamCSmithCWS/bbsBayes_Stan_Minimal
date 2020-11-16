@@ -244,6 +244,10 @@ energy__      -6.6e+04 -6.6e+04 -6.6e+04
 
 ```
 
+
+
+
+
 ## Original data prep for JAGS model
 
 ```{r earlier_data_prep, eval = FALSE}
