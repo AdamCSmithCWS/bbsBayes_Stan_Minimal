@@ -78,7 +78,6 @@ model {
   sdobs ~ normal(0,1); //prior on sd of gam hyperparameters
   sdyear ~ normal(0,1); // prior on sd of yeareffects - stratum specific
   obs_raw ~ normal(0,1); //non centered prior on observer effects
-  sum(obs_raw) ~ normal(0,0.001*nobservers); // soft sum to zero constraint
   
   
   //nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
