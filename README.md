@@ -1,8 +1,3 @@
----
-bibliography: references.bib
-output: word_document
----
-
 # bbsBayes_Stan_Minimal
 
 This is an minimum working example of an early attempt to use Stan to fit a relatively simple hierarchical model applied to data from the North American Breeding Bird Survey. I'm trying to build a Stan version of the JAGS models currently used to analyse the North American Breeding Bird Survey (BBS) monitoring data [@sauer2011][@smith2020]. The model is effectively a hierarchical, over-dispersed Poisson regression, with a number of intercept parameters to account for observer-effects, route-level variation in abundance, and random annual fluctuations around the slope-line.
