@@ -1,16 +1,16 @@
-# bbsBayes_Stan_Minimal
+# bbsBayes\_Stan\_Minimal
 
 This is an minimum working example of an early attempt to use Stan to fit a relatively simple hierarchical model applied to data from the North American Breeding Bird Survey. I'm trying to build a Stan version of the JAGS models currently used to analyse the North American Breeding Bird Survey (BBS) monitoring data [@sauer2011][@smith2020]. The model is effectively a hierarchical, over-dispersed Poisson regression, with a number of intercept parameters to account for observer-effects, route-level variation in abundance, and random annual fluctuations around the slope-line.
 
 This repo includes the code, model, and data for a minimal working example of one of the simplest models, using a species with pretty representative count structure and relatively few data (few strata and routes). It's currently set up to use only the most recent 20-years of data, but the continental scale monitoring program includes \> 50 years of data. The data are observations (summed counts) of individual birds observed during annual surveys of BBS "routes".
 
-The model works. It generates reasonable estimates, no divergent transitions, effective sample sizes are generally \~80% of the total samples. If the max_treedepth argument is increased beyond 10.
+The model works. It generates reasonable estimates, no divergent transitions, effective sample sizes are generally \~80% of the total samples. If the max\_treedepth argument is increased beyond 10.
 
 ## The problem
 
-The problem is that the sampler exceeds the maximum tree depth, even if the limit is set to \~15-17 (haven't tried higher yet because life is short). The high max_treedepth limit means that the sampler takes a really long time, even for this species which has very few data compared to many in the dataset.
+The problem is that the sampler exceeds the maximum tree depth, even if the limit is set to \~15-17 (haven't tried higher yet because life is short). The high max\_treedepth limit means that the sampler takes a really long time, even for this species which has very few data compared to many in the dataset.
 
-For example, at tree_depth 15, the n_leapfrog steps is \> 30,000. So even a limited initial run of 500 (400 warmup) requires \~10 hours. If max_treedepth at 17, it's closer to 24 hours for the same small run (500 transitions). If I were to try to run the model on some of the most data-rich species in the dataset, it would require months of run-time.
+For example, at tree\_depth 15, the n\_leapfrog steps is \> 30,000. So even a limited initial run of 500 (400 warmup) requires \~10 hours. If max\_treedepth at 17, it's closer to 24 hours for the same small run (500 transitions). If I were to try to run the model on some of the most data-rich species in the dataset, it would require months of run-time.
 
 ## Help!
 
@@ -22,7 +22,7 @@ I'm really new to Stan (this is my 3rd bespoke model), and I'm no mathematician.
 
 The priors are pretty reasonable. They're not strongly informative, but they are tuned to restrict the prior values to reasonable ranges.
 
-The random effects all use an uncentered parameterization. I've fit versions with centered parameterizations, and they are notably worse (much lower n_eff values).
+The random effects all use an uncentered parameterization. I've fit versions with centered parameterizations, and they are notably worse (much lower n\_eff values).
 
 Three of the random effects also include soft sum-to-zero constraints `{stan, eval = FALSE} sum(strata_p) ~ normal(0,0.001*nstrata)`. There are some inherent collinearities in the BBS data, and these constraints should (and seem to) help estimate parameters that have some correlation, such as the various stratum-level parameters that model and account for temporal changes in the observations:
 
@@ -72,7 +72,7 @@ The data object is a list with the following components:
 
 ## The model
 
-```{stan, eval = FALSE}
+```{stan}
 // This is a Stan implementation of the bbsBayes slope model
 
 data {
@@ -109,6 +109,7 @@ parameters {
   vector[nobservers] obs_raw;    // sd of year effects
 
   real<lower=0> sdnoise;    // sd of over-dispersion
+ //real<lower=1> nu;  //optional heavy-tail df for t-distribution
   real<lower=0> sdobs;    // sd of observer effects
   real<lower=0> sdbeta;    // sd of slopes 
   real<lower=0> sdstrata;    // sd of intercepts
@@ -117,7 +118,10 @@ parameters {
   
 }
 
-transformed parameters { 
+
+model {
+
+
   vector[ncounts] E;           // log_scale additive likelihood
   vector[ncounts] noise;           // extra-Poisson log-normal variance
   vector[nstrata] beta;
@@ -125,7 +129,42 @@ transformed parameters {
   vector[nobservers] obs; //observer effects
   matrix[nstrata,nyears] yeareffect;
 
-     obs = sdobs*obs_raw;
+
+
+
+  sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
+  noise_raw ~ std_normal(); //non centered prior normal tailed extra Poisson log-normal variance
+  
+  sdobs ~ std_normal(); //prior on sd of observer-route effects
+  sdyear ~ std_normal(); // prior on sd of yeareffects - stratum specific
+  obs_raw ~ std_normal(); //non centered prior on observer effects
+  
+  
+  //nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
+ for(s in 1:nstrata){
+
+  yeareffect_raw[s,] ~ std_normal();
+  sum(yeareffect_raw[s,]) ~ normal(0,0.001*nyears);// soft sum to zero constraint
+  
+ }
+ 
+  BETA ~ normal(0,0.1);// prior on fixed effect mean slope - hyperparameter
+  STRATA ~ std_normal();// prior on fixed effect mean intercept - hyperparameter
+  eta ~ std_normal();// prior on first-year observer effect
+  
+  
+  sdstrata ~ std_normal(); //prior on sd of intercept variation
+  sdbeta ~ normal(0,0.1); //prior on sd of slope variation
+
+  beta_p ~ std_normal(); //non centered prior on stratum-level slopes
+  strata_p ~ std_normal(); //non centered prior on stratum-level slopes
+
+  //sum to zero constraints
+  sum(strata_p) ~ normal(0,0.001*nstrata);
+  sum(beta_p) ~ normal(0,0.001*nstrata);
+  
+  
+       obs = sdobs*obs_raw;
      noise = sdnoise*noise_raw;
       
 
@@ -142,41 +181,8 @@ transformed parameters {
     E[i] =  beta[strat[i]] * (year[i]-fixedyear) + strata[strat[i]] + yeareffect[strat[i],year[i]] + obs[obser[i]] + eta*firstyr[i] + noise[i];
   }
   
-  }
-  
-model {
-
-  sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
-  noise_raw ~ normal(0,1); //non centered prior normal tailed extra Poisson log-normal variance
-  
-  sdobs ~ normal(0,1); //prior on sd of observer effects
-  sdyear ~ normal(0,1); // prior on sd of yeareffects - stratum specific
-  obs_raw ~ normal(0,1); //non centered prior on observer effects
-  
-  
- for(s in 1:nstrata){
-
-  yeareffect_raw[s,] ~ normal(0,1);
-  sum(yeareffect_raw[s,]) ~ normal(0,0.001*nyears);// soft sum to zero constraint
-  
- }
-  count ~ poisson_log(E); //vectorized count likelihood with log-transformation
-  
-  BETA ~ normal(0,0.1);// prior on fixed effect mean slope - hyperparameter
-  STRATA ~ normal(0,1);// prior on fixed effect mean intercept - hyperparameter
-  eta ~ normal(0,1);// prior on first-year observer effect
-  
-  
-  sdstrata ~ normal(0,1); //prior on sd of intercept variation
-  sdbeta ~ normal(0,0.1); //prior on sd of slope variation
-
-  beta_p ~ normal(0,1); //non centered prior on stratum-level slopes
-  strata_p ~ normal(0,1); //non centered prior on stratum-level intercepts
-
-  //sum to zero constraints
-  sum(strata_p) ~ normal(0,0.001*nstrata);
-  sum(beta_p) ~ normal(0,0.001*nstrata);
-  
+    count ~ poisson_log(E); //vectorized count likelihood with log-transformation
+ 
 }
 
 ```
@@ -243,10 +249,6 @@ energy__      -6.6e+04 -6.6e+04 -6.6e+04
 
 
 ```
-
-
-
-
 
 ## Original data prep for JAGS model
 
