@@ -47,13 +47,13 @@ parameters {
 model {
 
 
-  vector[ncounts] E;           // log_scale additive likelihood
+  real E[ncounts];           // log_scale additive likelihood
   vector[ncounts] noise;           // extra-Poisson log-normal variance
   vector[nstrata] beta;
   vector[nstrata] strata;
   vector[nobservers] obs; //observer effects
   matrix[nstrata,nyears] yeareffect;
-
+   vector[ncounts] log_lik;
 
 
 
@@ -108,4 +108,10 @@ model {
   
     count ~ poisson_log(E); //vectorized count likelihood with log-transformation
  
+
+  for(i in 1:ncounts){
+  log_lik[i] = poisson_log_lpmf(count[i] | E[i]);
+  }
+  
 }
+
