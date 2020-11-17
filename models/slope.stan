@@ -43,7 +43,10 @@ parameters {
   
 }
 
-transformed parameters { 
+
+model {
+
+
   vector[ncounts] E;           // log_scale additive likelihood
   vector[ncounts] noise;           // extra-Poisson log-normal variance
   vector[nstrata] beta;
@@ -51,7 +54,42 @@ transformed parameters {
   vector[nobservers] obs; //observer effects
   matrix[nstrata,nyears] yeareffect;
 
-     obs = sdobs*obs_raw;
+
+
+
+  sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
+  noise_raw ~ std_normal(); //non centered prior normal tailed extra Poisson log-normal variance
+  
+  sdobs ~ std_normal(); //prior on sd of observer-route effects
+  sdyear ~ std_normal(); // prior on sd of yeareffects - stratum specific
+  obs_raw ~ std_normal(); //non centered prior on observer effects
+  
+  
+  //nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
+ for(s in 1:nstrata){
+
+  yeareffect_raw[s,] ~ std_normal();
+  sum(yeareffect_raw[s,]) ~ normal(0,0.001*nyears);// soft sum to zero constraint
+  
+ }
+ 
+  BETA ~ normal(0,0.1);// prior on fixed effect mean slope - hyperparameter
+  STRATA ~ std_normal();// prior on fixed effect mean intercept - hyperparameter
+  eta ~ std_normal();// prior on first-year observer effect
+  
+  
+  sdstrata ~ std_normal(); //prior on sd of intercept variation
+  sdbeta ~ normal(0,0.1); //prior on sd of slope variation
+
+  beta_p ~ std_normal(); //non centered prior on stratum-level slopes
+  strata_p ~ std_normal(); //non centered prior on stratum-level slopes
+
+  //sum to zero constraints
+  sum(strata_p) ~ normal(0,0.001*nstrata);
+  sum(beta_p) ~ normal(0,0.001*nstrata);
+  
+  
+       obs = sdobs*obs_raw;
      noise = sdnoise*noise_raw;
       
 
@@ -68,40 +106,6 @@ transformed parameters {
     E[i] =  beta[strat[i]] * (year[i]-fixedyear) + strata[strat[i]] + yeareffect[strat[i],year[i]] + obs[obser[i]] + eta*firstyr[i] + noise[i];
   }
   
-  }
-  
-model {
-
-  sdnoise ~ normal(0,1); //prior on scale of extra Poisson log-normal variance
-  noise_raw ~ normal(0,1); //non centered prior normal tailed extra Poisson log-normal variance
-  
-  sdobs ~ normal(0,1); //prior on sd of observer-route effects
-  sdyear ~ normal(0,1); // prior on sd of yeareffects - stratum specific
-  obs_raw ~ normal(0,1); //non centered prior on observer effects
-  
-  
-  //nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
- for(s in 1:nstrata){
-
-  yeareffect_raw[s,] ~ normal(0,1);
-  sum(yeareffect_raw[s,]) ~ normal(0,0.001*nyears);// soft sum to zero constraint
-  
- }
-  count ~ poisson_log(E); //vectorized count likelihood with log-transformation
-  
-  BETA ~ normal(0,0.1);// prior on fixed effect mean slope - hyperparameter
-  STRATA ~ normal(0,1);// prior on fixed effect mean intercept - hyperparameter
-  eta ~ normal(0,1);// prior on first-year observer effect
-  
-  
-  sdstrata ~ normal(0,1); //prior on sd of intercept variation
-  sdbeta ~ normal(0,0.1); //prior on sd of slope variation
-
-  beta_p ~ normal(0,1); //non centered prior on stratum-level slopes
-  strata_p ~ normal(0,1); //non centered prior on stratum-level slopes
-
-  //sum to zero constraints
-  sum(strata_p) ~ normal(0,0.001*nstrata);
-  sum(beta_p) ~ normal(0,0.001*nstrata);
-  
+    count ~ poisson_log(E); //vectorized count likelihood with log-transformation
+ 
 }

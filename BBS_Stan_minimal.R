@@ -101,10 +101,12 @@ print(slope_stanfit)
 get_elapsed_time(slope_stanfit)/3600 ## in hours
 
 save(list = c("slope_stanfit","species","mod.file","model","strat"),
-          file = "output/Pacific Wren_slope_stan_saved_output.RData")
+          file = "output/Pacific Wren_slope_stan_saved_output_reparam2.RData")
 
 
 load("output/Pacific Wren_slope_stan_saved_output.RData")
+print(slope_stanfit)
+get_elapsed_time(slope_stanfit)/3600 ## in hours
 
 launch_shinystan(slope_stanfit) 
 
