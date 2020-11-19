@@ -112,3 +112,156 @@ launch_shinystan(slope_stanfit)
 
 
 
+
+# loo capable version -----------------------------------------------------
+
+
+parms = c("sdnoise",
+          "sdyear",
+          "sdobs",
+          "beta_p",
+          "sdbeta",
+          "strata_p",
+          "sdstrata",
+          "BETA",
+          "STRATA",
+          "eta",
+          "log_lik")
+mod.file = "models/slope_alt.stan"
+
+
+## compile model
+slope_model = stan_model(file=mod.file)
+
+## run sampler on model, data
+slope_stanfit <-sampling(slope_model,
+                         data=stan_data,
+                         verbose=TRUE, refresh=100,
+                         chains=3, iter=500,
+                         warmup=400,
+                         cores = 3,
+                         pars = parms,
+                         control = list(adapt_delta = 0.8,
+                                        max_treedepth = 15))
+
+print(slope_stanfit)
+get_elapsed_time(slope_stanfit)/3600 ## in hours
+
+library(loo)
+library(tidyverse)
+log_lik_1 <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
+r_eff <- relative_eff(exp(log_lik_1), cores = 10)
+loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 10)
+print(loo_1)
+
+plot(loo_1$pointwise[,"influence_pareto_k"],stan_data$count)
+
+loo2 = data.frame(loo_1$pointwise)
+
+ loo2$flag = cut(loo2$influence_pareto_k,breaks = c(0,0.5,0.7,1,Inf))
+ dts = data.frame(count = stan_data$count,
+                  obser = stan_data$obser,
+                  strat = stan_data$strat,
+                  year = stan_data$year)
+  loo2 = cbind(loo2,dts)
+
+  plot(log(loo2$count+1),loo2$influence_pareto_k)
+  
+  obserk = loo2 %>% group_by(obser) %>% 
+    summarise(n = n(),
+              mean_k = mean(influence_pareto_k),
+              max_k = max(influence_pareto_k),
+              sd_k = sd(influence_pareto_k),
+              strat = mean(strat),
+              sd = sd(strat))
+  plot(obserk$n,obserk$max_k)
+  plot(obserk$n,obserk$sd_k)
+  
+  
+  yeark = loo2 %>% group_by(year) %>% 
+    summarise(n = n(),
+              mean_k = mean(influence_pareto_k),
+              q90 = quantile(influence_pareto_k,0.9),
+              max_k = max(influence_pareto_k),
+              sd_k = sd(influence_pareto_k),
+              strat = mean(strat),
+              sd = sd(strat))
+  plot(yeark$year,yeark$max_k)
+  plot(yeark$year,yeark$mean_k)
+  plot(yeark$year,yeark$sd_k)
+  plot(yeark$year,yeark$q90)
+  
+  stratk = loo2 %>% group_by(strat) %>% 
+    summarise(n = n(),
+              mean_k = mean(influence_pareto_k),
+              q90_k = quantile(influence_pareto_k,0.9),
+              max_k = max(influence_pareto_k),
+              sd_k = sd(influence_pareto_k),
+              strat = mean(strat),
+              sd = sd(strat))
+  plot(stratk$strat,stratk$max_k)
+  plot(stratk$n,stratk$mean_k)
+  
+  plot(stratk$strat,stratk$mean_k)
+  plot(stratk$strat,stratk$sd_k)
+  plot(stratk$strat,stratk$q90_k)
+  
+  
+save(list = c("slope_stanfit","species","mod.file","model","strat"),
+     file = "output/Pacific Wren_slope_stan_saved_output_reparam3.RData")
+
+
+# heavy-tailed version with loo -------------------------------------------
+
+
+parms = c("sdnoise",
+          "sdyear",
+          "sdobs",
+          "beta_p",
+          "sdbeta",
+          "strata_p",
+          "sdstrata",
+          "BETA",
+          "STRATA",
+          "eta",
+          #"nu",
+          "log_lik")
+mod.file = "models/slope_heavy.stan"
+
+
+## compile model
+slope_model = stan_model(file=mod.file)
+
+## run sampler on model, data
+slope_stanfit <-sampling(slope_model,
+                         data=stan_data,
+                         verbose=TRUE, refresh=100,
+                         chains=3, iter=500,
+                         warmup=400,
+                         cores = 3,
+                         pars = parms,
+                         control = list(adapt_delta = 0.8,
+                                        max_treedepth = 15))
+
+print(slope_stanfit)
+get_elapsed_time(slope_stanfit)/3600 ## in hours
+
+library(loo)
+library(tidyverse)
+log_lik_1 <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
+r_eff <- relative_eff(exp(log_lik_1), cores = 10)
+loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 10)
+print(loo_1)
+
+
+
+
+
+
+
+load("output/Pacific Wren_slope_stan_saved_output.RData")
+print(slope_stanfit)
+get_elapsed_time(slope_stanfit)/3600 ## in hours
+
+launch_shinystan(slope_stanfit) 
+

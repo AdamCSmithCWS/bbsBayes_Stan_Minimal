@@ -59,13 +59,14 @@ model {
 
   sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
   noise_raw ~ std_normal(); //non centered prior normal tailed extra Poisson log-normal variance
-  
+  //noise_raw ~ std_normal(); //non centered prior normal tailed extra Poisson log-normal variance
+  //  nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
+
   sdobs ~ std_normal(); //prior on sd of observer-route effects
   sdyear ~ std_normal(); // prior on sd of yeareffects - stratum specific
   obs_raw ~ std_normal(); //non centered prior on observer effects
   
   
-  //nu ~ gamma(2,0.1); // alternate prior on df for t-distribution of heavy tailed 
  for(s in 1:nstrata){
 
   yeareffect_raw[s,] ~ std_normal();
