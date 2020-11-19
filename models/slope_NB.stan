@@ -44,7 +44,7 @@ parameters {
 }
 
 transformed parameters {
-    real E[ncounts];           // log_scale additive likelihood
+    vector[ncounts] E;           // log_scale additive likelihood
     real<lower=0> phi;
   vector[ncounts] noise;           // extra-Poisson log-normal variance
   vector[nstrata] beta;
@@ -119,8 +119,12 @@ reciprocal_phi ~ std_normal(); //half normal prior on 1/phi - puts low prior pro
 generated quantities {
      vector[ncounts] log_lik;
        vector[ncounts] mu;
+       vector[ncounts] mu2;
   vector[ncounts] y_rep;
-  mu = exp(E)
+  
+  mu = exp(E);
+  mu2 = phi*exp(E);
+  
   for(i in 1:ncounts){
   log_lik[i] = neg_binomial_2_log_lpmf(count[i] | E[i], phi);
   y_rep[i] = neg_binomial_2_rng(mu[i], phi);
