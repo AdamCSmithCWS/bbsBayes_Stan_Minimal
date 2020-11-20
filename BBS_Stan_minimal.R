@@ -248,11 +248,24 @@ get_elapsed_time(slope_stanfit)/3600 ## in hours
 
 library(loo)
 library(tidyverse)
+log_lik_1H <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
+r_effH <- relative_eff(exp(log_lik_1H), cores = 10)
+loo_1H <- loo(log_lik_1H, r_eff = r_effH, cores = 10)
+print(loo_1H)
+
+
+save(list = c("slope_stanfit","species","mod.file","model","strat"),
+     file = "output/Pacific Wren_slope_stan_saved_output_heavy_loo.RData")
+
+
+
+
+
+load("output/Pacific Wren_slope_stan_saved_output_reparam3.RData")
 log_lik_1 <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
 r_eff <- relative_eff(exp(log_lik_1), cores = 10)
 loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 10)
 print(loo_1)
-
 
 
 

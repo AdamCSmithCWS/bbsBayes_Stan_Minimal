@@ -89,9 +89,9 @@ sdbeta = 0.01
 
 
 STRATA = -1
-B = -0.02
+BETA = -0.02
 eta = -0.1
-beta = rnorm(nstrata,B,sdbeta)
+beta = rnorm(nstrata,BETA,sdbeta)
 strata = rnorm(nstrata,STRATA,sdstrata)
 yeareffect = matrix(NA,nrow = nstrata,ncol = nyears)
 for(s in 1:nstrata){
@@ -99,6 +99,20 @@ for(s in 1:nstrata){
 }
 obs = rnorm(nobservers,0,sdobs)
 noise = rnorm(ncounts,0,sdnoise)
+
+
+true_values = list(sdnoise = sdnoise,
+                   sdobs = sdobs,
+                   sdyear = sdyear,
+                   sdstrata = sdstrata,
+                   sdbeta = sdbeta,
+                   STRATA = STRATA,
+                   BETA = BETA,
+                   eta = eta,
+                   beta = beta,
+                   strata = strata,
+                   obs = obs)
+
 E = vector(mode = "numeric",length = ncounts)
 simcount =vector(mode = "integer",length = ncounts)
 for(i in 1:ncounts){
@@ -115,9 +129,9 @@ for(i in 1:ncounts){
 parms = c("sdnoise",
           "sdyear",
           "sdobs",
-          "beta_p",
+          "beta",
           "sdbeta",
-          "strata_p",
+          "strata",
           "sdstrata",
           "BETA",
           "STRATA",
@@ -147,6 +161,7 @@ get_elapsed_time(slope_stanfit)/3600 ## in hours
 
 library(loo)
 library(tidyverse)
+
 log_lik_1 <- extract_log_lik(slope_stanfit, merge_chains = FALSE)
 r_eff <- relative_eff(exp(log_lik_1), cores = 10)
 loo_1 <- loo(log_lik_1, r_eff = r_eff, cores = 10)
@@ -173,6 +188,7 @@ loo2 = data.frame(loo_1$pointwise)
               strat = mean(strat),
               sd = sd(strat))
   plot(obserk$n,obserk$max_k)
+  plot(obserk$n,obserk$mean_k)
   plot(obserk$n,obserk$sd_k)
   
   
@@ -206,7 +222,29 @@ loo2 = data.frame(loo_1$pointwise)
   
   
 save(list = c("slope_stanfit","species","mod.file","model","strat"),
-     file = "output/Pacific Wren_slope_stan_saved_output_reparam3.RData")
+     file = "output/Pacific Wren_slope_stan_simulated_data.RData")
+
+
+
+### compare parameter estimates
+pdf("Estimated vs True simulated2.pdf")
+for(pp in parms[-c(11)]){
+fitmat = as.matrix(slope_stanfit,pars = pp)
+if(ncol(fitmat) > 1){
+  smp = sample(1:ncol(fitmat),size = 9)
+  for(ss in smp){
+    lbl = paste0(pp,"[",ss,"]")
+  hist(fitmat[,lbl],breaks = 40,xlab = lbl)
+  abline(v = true_values[[pp]][ss],col = "blue",lwd = 2)
+  }
+  
+}else{
+hist(fitmat,breaks = 40,xlab = pp)
+abline(v = true_values[[pp]],col = "blue",lwd = 2)
+}
+}
+dev.off()
+
 
 
 # heavy-tailed version with loo -------------------------------------------

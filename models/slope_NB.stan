@@ -20,7 +20,7 @@ data {
 parameters {
   vector[ncounts] noise_raw;             //non centered observation-level random effect to model over-dispersion
  // real lambda[ncounts];             // Poisson means
-  real<lower=0> reciprocal_phi; //scaling factor of the extra poisson variance var = E + (E^2 * reciprocal_phi)
+  real<lower=0.001> reciprocal_phi; //scaling factor of the extra poisson variance var = E + (E^2 * reciprocal_phi)
   vector[nstrata] beta_p; //non centered random effect slopes
   real BETA; //Slope hyperparameter
 

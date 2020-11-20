@@ -40,18 +40,22 @@ parameters {
   real<lower=0> sdstrata;    // sd of intercepts
   real<lower=0> sdyear[nstrata];    // sd of year effects
 
+
+
+ 
   
 }
 
 transformed parameters {
     real E[ncounts];           // log_scale additive likelihood
+
   vector[ncounts] noise;           // extra-Poisson log-normal variance
   vector[nstrata] beta;
   vector[nstrata] strata;
   vector[nobservers] obs; //observer effects
   matrix[nstrata,nyears] yeareffect;
  
- 
+
    
        obs = sdobs*obs_raw;
      noise = sdnoise*noise_raw;
@@ -66,6 +70,7 @@ transformed parameters {
    }
   
 
+
   for(i in 1:ncounts){
     E[i] =  beta[strat[i]] * (year[i]-fixedyear) + strata[strat[i]] + yeareffect[strat[i],year[i]] + obs[obser[i]] + eta*firstyr[i] + noise[i];
   }
@@ -76,13 +81,10 @@ transformed parameters {
 model {
 
 
-
-
-
   sdnoise ~ std_normal(); //prior on scale of extra Poisson log-normal variance
   noise_raw ~ std_normal(); //non centered prior normal tailed extra Poisson log-normal variance
   
-  sdobs ~ std_normal(); //prior on sd of observer-route effects
+  sdobs ~ normal(0,0.2); //shrinkage prior on sd of observer-route effects
   sdyear ~ std_normal(); // prior on sd of yeareffects - stratum specific
   obs_raw ~ std_normal(); //non centered prior on observer effects
   
@@ -97,7 +99,7 @@ model {
  
   BETA ~ normal(0,0.1);// prior on fixed effect mean slope - hyperparameter
   STRATA ~ std_normal();// prior on fixed effect mean intercept - hyperparameter
-  eta ~ std_normal();// prior on first-year observer effect
+  eta ~ normal(0,0.1);// shrinkage prior on first-year observer effect
   
   
   sdstrata ~ std_normal(); //prior on sd of intercept variation
